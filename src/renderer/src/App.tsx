@@ -29,13 +29,24 @@ import Background from "./components/canvas/background";
 import WebSocketStatus from "./components/canvas/ws-status";
 import Subtitle from "./components/canvas/subtitle";
 import { ModeProvider, useMode } from "./context/mode-context";
+import { useIsMobile } from "./hooks/use-is-mobile";
+import MobileHeader from "./components/mobile/mobile-header";
+import SettingUI from "./components/sidebar/setting/setting-ui";
+import { useSidebar } from "./hooks/sidebar/use-sidebar";
 
 function AppContent(): JSX.Element {
   const [showSidebar, setShowSidebar] = useState(true);
   const [isFooterCollapsed, setIsFooterCollapsed] = useState(false);
   const { mode } = useMode();
   const isElectron = window.api !== undefined;
+  const isMobile = useIsMobile();
   const live2dContainerRef = useRef<HTMLDivElement>(null);
+  // 手机端设置抽屉(管理密码/模型/TTS/ASR 等各项参数)
+  const {
+    settingsOpen: mobileSettingsOpen,
+    onSettingsOpen: onMobileSettingsOpen,
+    onSettingsClose: onMobileSettingsClose,
+  } = useSidebar();
 
   useEffect(() => {
     const handleResize = () => {
@@ -91,6 +102,16 @@ function AppContent(): JSX.Element {
     zIndex: 15, // Higher zIndex for pet mode overlay
   };
 
+  // 手机端(window 模式):Live2D 全屏铺满
+  const live2dMobileStyle = {
+    ...live2dBaseStyle,
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    zIndex: 5,
+  };
+
   return (
     <>
       <Box
@@ -98,7 +119,9 @@ function AppContent(): JSX.Element {
         // Apply styles conditionally based on mode
         // Use the function to get dynamic responsive styles for window mode
         {...(mode === "window"
-          ? getResponsiveLive2DWindowStyle(showSidebar)
+          ? isMobile
+            ? live2dMobileStyle
+            : getResponsiveLive2DWindowStyle(showSidebar)
           : live2dPetStyle)}
       >
         <Live2D />
@@ -108,44 +131,83 @@ function AppContent(): JSX.Element {
       {mode === "window" && (
         <>
           {isElectron && <TitleBar />}
-          {/* Apply styles by spreading */}
-          <Flex {...layoutStyles.appContainer}>
-            <Box
-              {...layoutStyles.sidebar}
-              {...(!showSidebar && { width: "24px" })}
-            >
-              <Sidebar
-                isCollapsed={!showSidebar}
-                onToggle={() => setShowSidebar(!showSidebar)}
-              />
-            </Box>
-            <Box {...layoutStyles.mainContent}>
-              <Background />
-              <Box position="absolute" top="20px" left="20px" zIndex={10}>
+          {isMobile ? (
+            /* ===== 手机端布局:顶栏 + 全屏模型 + 底部输入,☰ 出设置抽屉 ===== */
+            <>
+              <Box position="absolute" inset={0} zIndex={1}>
+                <Background />
+              </Box>
+              <MobileHeader onMenuOpen={onMobileSettingsOpen} />
+              <Box position="absolute" top="56px" right="12px" zIndex={30}>
                 <WebSocketStatus />
               </Box>
               <Box
                 position="absolute"
-                bottom={isFooterCollapsed ? "39px" : "135px"}
+                bottom="130px"
                 left="50%"
                 transform="translateX(-50%)"
                 zIndex={10}
-                width="60%"
+                width="92%"
               >
                 <Subtitle />
               </Box>
               <Box
-                {...layoutStyles.footer}
-                zIndex={10}
-                {...(isFooterCollapsed && layoutStyles.collapsedFooter)}
+                position="absolute"
+                bottom={0}
+                left={0}
+                right={0}
+                zIndex={20}
               >
-                <Footer
-                  isCollapsed={isFooterCollapsed}
-                  onToggle={() => setIsFooterCollapsed(!isFooterCollapsed)}
-                />
+                <Footer isCollapsed={false} onToggle={() => {}} />
               </Box>
-            </Box>
-          </Flex>
+              <SettingUI
+                open={mobileSettingsOpen}
+                onClose={onMobileSettingsClose}
+                onToggle={() => {}}
+              />
+            </>
+          ) : (
+            <>
+              {/* Apply styles by spreading */}
+              <Flex {...layoutStyles.appContainer}>
+                <Box
+                  {...layoutStyles.sidebar}
+                  {...(!showSidebar && { width: "24px" })}
+                >
+                  <Sidebar
+                    isCollapsed={!showSidebar}
+                    onToggle={() => setShowSidebar(!showSidebar)}
+                  />
+                </Box>
+                <Box {...layoutStyles.mainContent}>
+                  <Background />
+                  <Box position="absolute" top="20px" left="20px" zIndex={10}>
+                    <WebSocketStatus />
+                  </Box>
+                  <Box
+                    position="absolute"
+                    bottom={isFooterCollapsed ? "39px" : "135px"}
+                    left="50%"
+                    transform="translateX(-50%)"
+                    zIndex={10}
+                    width="60%"
+                  >
+                    <Subtitle />
+                  </Box>
+                  <Box
+                    {...layoutStyles.footer}
+                    zIndex={10}
+                    {...(isFooterCollapsed && layoutStyles.collapsedFooter)}
+                  >
+                    <Footer
+                      isCollapsed={isFooterCollapsed}
+                      onToggle={() => setIsFooterCollapsed(!isFooterCollapsed)}
+                    />
+                  </Box>
+                </Box>
+              </Flex>
+            </>
+          )}
         </>
       )}
 

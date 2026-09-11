@@ -3,8 +3,9 @@ import React, { useContext, useCallback } from 'react';
 import { wsService } from '@/services/websocket-service';
 import { useLocalStorage } from '@/hooks/utils/use-local-storage';
 
-const DEFAULT_WS_URL = 'ws://127.0.0.1:12393/client-ws';
-const DEFAULT_BASE_URL = 'http://127.0.0.1:12393';
+// 家庭局域网部署:默认连本网关地址(源码级默认,前端设置面板仍可覆盖)
+const DEFAULT_WS_URL = 'wss://192.168.5.15:29011/client-ws';
+const DEFAULT_BASE_URL = 'https://192.168.5.15:29011';
 
 export interface HistoryInfo {
   uid: string;
