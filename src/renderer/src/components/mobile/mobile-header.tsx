@@ -2,7 +2,8 @@
 /* 手机端顶部标题栏:左侧菜单键(打开设置抽屉),中间模型名(点击重命名),右侧历史/新建 */
 import { useState } from 'react';
 import { Box, Flex, IconButton, Dialog, Input, Button } from '@chakra-ui/react';
-import { FiMenu, FiClock, FiPlus } from 'react-icons/fi';
+import { FiMenu, FiClock, FiPlus, FiVolume2, FiVolumeX } from 'react-icons/fi';
+import { useAudioMute } from '@/context/audio-mute-context';
 import { useConfig } from '@/context/character-config-context';
 import { useSidebar } from '@/hooks/sidebar/use-sidebar';
 import HistoryDrawer from '@/components/sidebar/history-drawer';
@@ -22,6 +23,7 @@ function savedCharName(confName: string): string {
 export function MobileHeader({ onMenuOpen }: MobileHeaderProps): JSX.Element {
   const { confName } = useConfig();
   const { createNewHistory } = useSidebar();
+  const { muted, toggleMuted } = useAudioMute();
   const [editing, setEditing] = useState<boolean>(false);
   const [draft, setDraft] = useState<string>('');
   const shownName = savedCharName(confName);
@@ -82,6 +84,16 @@ export function MobileHeader({ onMenuOpen }: MobileHeaderProps): JSX.Element {
         >
           {shownName}
         </Box>
+
+        <IconButton
+          aria-label={muted ? '取消静音' : '静音语音输出'}
+          variant="ghost"
+          size="lg"
+          color={muted ? 'red.300' : 'white'}
+          onClick={toggleMuted}
+        >
+          {muted ? <FiVolumeX /> : <FiVolume2 />}
+        </IconButton>
 
         <HistoryDrawer>
           <IconButton aria-label="历史对话" variant="ghost" size="lg">

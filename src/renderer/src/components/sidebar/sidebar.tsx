@@ -1,8 +1,10 @@
 /* eslint-disable react/require-default-props */
 import { Box, Button, Menu } from '@chakra-ui/react';
 import {
-  FiSettings, FiClock, FiPlus, FiChevronLeft, FiUsers, FiLayers
+  FiSettings, FiClock, FiPlus, FiChevronLeft, FiUsers, FiLayers,
+  FiVolume2, FiVolumeX
 } from 'react-icons/fi';
+import { useAudioMute } from '@/context/audio-mute-context';
 import { memo } from 'react';
 import { sidebarStyles } from './sidebar-styles';
 import SettingUI from './setting/setting-ui';
@@ -82,8 +84,24 @@ const ModeMenu = memo(({ setMode, currentMode, isElectron }: {
 
 ModeMenu.displayName = 'ModeMenu';
 
+const MuteButton = memo(() => {
+  const { muted, toggleMuted } = useAudioMute();
+  return (
+    <Button
+      onClick={toggleMuted}
+      title={muted ? '取消静音' : '静音语音输出'}
+      color={muted ? 'red.300' : undefined}
+    >
+      {muted ? <FiVolumeX /> : <FiVolume2 />}
+    </Button>
+  );
+});
+
+MuteButton.displayName = 'MuteButton';
+
 const HeaderButtons = memo(({ onSettingsOpen, onNewHistory, setMode, currentMode, isElectron }: HeaderButtonsProps) => (
   <Box display="flex" gap={1}>
+    <MuteButton />
     <Button onClick={onSettingsOpen}>
       <FiSettings />
     </Button>

@@ -12,6 +12,8 @@ import { toaster } from '@/components/ui/toaster';
 import { useWebSocket } from '@/context/websocket-context';
 import { DisplayText } from '@/services/websocket-service';
 import { useLive2DExpression } from '@/hooks/canvas/use-live2d-expression';
+import { useVAD } from '@/context/vad-context';
+import { useAudioMute } from '@/context/audio-mute-context';
 import * as LAppDefine from '../../../WebSDK/src/lappdefine';
 
 // Simple type alias for Live2D model
@@ -37,6 +39,8 @@ export const useAudioTask = () => {
   const { appendResponse, appendAIMessage } = useChatHistory();
   const { sendMessage } = useWebSocket();
   const { setExpression } = useLive2DExpression();
+  const { micOn, stopMic, startMic } = useVAD();
+  const { muted } = useAudioMute();
 
   // State refs to avoid stale closures
   const stateRef = useRef({
@@ -45,6 +49,8 @@ export const useAudioTask = () => {
     appendResponse,
     appendAIMessage,
   });
+  const mutedRef = useRef(muted);
+  mutedRef.current = muted;
 
   // Note: currentAudioRef and currentModelRef are now managed by the global audioManager
 
@@ -101,7 +107,22 @@ export const useAudioTask = () => {
     try {
       // Process audio if available
       if (audioBase64) {
+        // 静音:跳过音频播放(文字照常显示)
+        if (mutedRef.current) {
+          console.log('TTS muted: skip audio playback');
+          resolve();
+          return;
+        }
+
         const audioDataUrl = `data:audio/wav;base64,${audioBase64}`;
+
+        // 播放期间释放麦克风:部分安卓浏览器在麦克风开启时会把音频路由到
+        // 通话通道(听筒音量),停麦即回到媒体通道,播完自动恢复
+        let resumeMic = false;
+        if (micOn) {
+          resumeMic = true;
+          stopMic();
+        }
 
         // Get Live2D manager and model
         const live2dManager = (window as any).getLive2DManager?.();
@@ -155,6 +176,9 @@ export const useAudioTask = () => {
 
         const cleanup = () => {
           audioManager.clearCurrentAudio(audio);
+          if (resumeMic) {
+            void startMic();
+          }
           if (!isFinished) {
             isFinished = true;
             resolve();

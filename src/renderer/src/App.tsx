@@ -33,6 +33,7 @@ import { useIsMobile } from "./hooks/use-is-mobile";
 import MobileHeader from "./components/mobile/mobile-header";
 import SettingUI from "./components/sidebar/setting/setting-ui";
 import { useSidebar } from "./hooks/sidebar/use-sidebar";
+import { AudioMuteProvider } from "./context/audio-mute-context";
 
 function AppContent(): JSX.Element {
   const [showSidebar, setShowSidebar] = useState(true);
@@ -143,11 +144,11 @@ function AppContent(): JSX.Element {
               </Box>
               <Box
                 position="absolute"
-                bottom="130px"
+                top="60px"
                 left="50%"
                 transform="translateX(-50%)"
                 zIndex={10}
-                width="92%"
+                width="86%"
               >
                 <Subtitle />
               </Box>
@@ -244,10 +245,12 @@ function AppWithGlobalStyles(): JSX.Element {
                         <BgUrlProvider>
                           <GroupProvider>
                             <BrowserProvider>
-                              <WebSocketHandler>
-                                <Toaster />
-                                <AppContent />
-                              </WebSocketHandler>
+                              <AudioMuteProvider>
+                                <WebSocketHandler>
+                                  <Toaster />
+                                  <AppContent />
+                                </WebSocketHandler>
+                              </AudioMuteProvider>
                             </BrowserProvider>
                           </GroupProvider>
                         </BgUrlProvider>
