@@ -17,7 +17,7 @@ import { useWebSocket } from '@/context/websocket-context';
 import { useLive2DConfig } from '@/context/live2d-config-context';
 import {
   getExpressions, getMotionGroups, playMotion, setExpression,
-  modelNameFromUrl, getSavedScale, saveScaleForModel,
+  modelNameFromUrl, getBaseScale,
   type MotionGroupInfo,
 } from '@/utils/live2d-control';
 
@@ -93,10 +93,8 @@ export function MobileComposer(): JSX.Element {
   const switchModel = (c: CharacterInfo) => {
     const url = `${baseUrl}/${c.model_path}`;
     if (modelInfo?.url !== url) {
-      const curName = modelNameFromUrl(modelInfo?.url);
-      // 记住当前模型的缩放;新模型优先用记忆值,否则用默认值
-      saveScaleForModel(curName, modelInfo?.kScale ?? 0);
-      const target = getSavedScale(c.name) ?? DEFAULT_MODEL_SCALE;
+      // 加载一律用默认大小:优先该模型本次会话记录的加载基准,否则通用默认
+      const target = getBaseScale(c.name) ?? DEFAULT_MODEL_SCALE;
       // setModelInfo 内部会把 kScale 乘 2,这里先除回来
       setModelInfo({ ...modelInfo, url, kScale: target / 2 });
     }

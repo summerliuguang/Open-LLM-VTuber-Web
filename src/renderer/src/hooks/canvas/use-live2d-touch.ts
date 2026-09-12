@@ -3,9 +3,7 @@
    桌面端已有的滚轮缩放/鼠标拖动不受影响。 */
 import { useRef, useCallback } from 'react';
 import { LAppDelegate } from '../../../WebSDK/src/lappdelegate';
-import {
-  saveScaleForModel, getAppliedScale, scaleModelBy, getActiveModelName,
-} from '@/utils/live2d-control';
+import { scaleModelBy } from '@/utils/live2d-control';
 
 const TAP_MOVE_TOLERANCE = 8; // px,小于该位移视为点按(让点击触发动作的旧逻辑接管)
 
@@ -20,7 +18,7 @@ export const useLive2DTouch = () => {
     modelStart: Pt;       // 触点起始对应的模型坐标
     moved: boolean;
   } | null>(null);
-  const pinch = useRef<{ startDist: number; startScale: number } | null>(null);
+  const pinch = useRef<{ startDist: number } | null>(null);
 
   const getView = useCallback(() => LAppDelegate.getInstance().getView(), []);
 
@@ -74,7 +72,7 @@ export const useLive2DTouch = () => {
       // 进入捏合,取消拖动
       drag.current = null;
       const [a, b] = Array.from(pointers.current.values());
-      pinch.current = { startDist: Math.max(dist(a, b), 1), startScale: getAppliedScale() };
+      pinch.current = { startDist: Math.max(dist(a, b), 1) };
     }
   }, [screenToCanvas, toModelCoord, getView]);
 
@@ -118,11 +116,6 @@ export const useLive2DTouch = () => {
   const onTouchEnd = useCallback((e: React.TouchEvent) => {
     for (const t of Array.from(e.changedTouches)) {
       pointers.current.delete(t.identifier);
-    }
-    // 捏合结束:记录该模型的缩放(名字取自活动模型,避免依赖可能滞后的 React 状态)
-    if (pinch.current && pointers.current.size < 2) {
-      saveScaleForModel(getActiveModelName(), getAppliedScale());
-      pinch.current = null;
     }
     if (pointers.current.size === 0) {
       drag.current = null;

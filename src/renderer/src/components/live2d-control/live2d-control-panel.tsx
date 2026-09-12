@@ -6,14 +6,16 @@ import {
   Stack, Box, Flex, Text, Button, IconButton, SimpleGrid,
   Input, Separator, Badge,
 } from '@chakra-ui/react';
-import { FiUpload, FiPlay, FiTrash2, FiRotateCcw } from 'react-icons/fi';
+import { Switch } from '@/components/ui/switch';
+import { FiUpload, FiPlay, FiTrash2, FiRotateCcw, FiChevronDown } from 'react-icons/fi';
 import { useLive2DConfig } from '@/context/live2d-config-context';
 import {
   getExpressions, getMotionGroups, playMotion, playRandomMotion,
   setExpression, getManualExpression, clearManualExpression, resetToDefault,
   getPresets, deletePreset, importPresetFile, playExpressionPreset,
   playMotionPreset, restorePresetsForCurrentModel, setModelUrl,
-  type MotionGroupInfo, type Live2DPreset,
+  getParts, setPartVisible,
+  type MotionGroupInfo, type Live2DPreset, type PartInfo,
 } from '@/utils/live2d-control';
 
 const panelBtn = {
@@ -30,6 +32,8 @@ function Live2DControlPanel(): JSX.Element {
   const [expressions, setExpressions] = useState<string[]>([]);
   const [motionGroups, setMotionGroups] = useState<MotionGroupInfo[]>([]);
   const [presets, setPresets] = useState<Live2DPreset[]>([]);
+  const [parts, setParts] = useState<PartInfo[]>([]);
+  const [partsOpen, setPartsOpen] = useState<boolean>(false);
   const [manual, setManual] = useState<string | null>(null);
   const [message, setMessage] = useState<string>('');
   const [busy, setBusy] = useState<boolean>(false);
@@ -39,6 +43,7 @@ function Live2DControlPanel(): JSX.Element {
     setExpressions(getExpressions());
     setMotionGroups(getMotionGroups());
     setPresets(getPresets());
+    setParts(getParts());
     setManual(getManualExpression());
   }, []);
 
@@ -196,6 +201,52 @@ function Live2DControlPanel(): JSX.Element {
               </Box>
             ))}
           </Stack>
+        )}
+      </Box>
+
+      <Separator />
+
+      {/* 换装(部件开关) */}
+      <Box>
+        <Flex align="center" mb={2} gap={2}>
+          <Text fontSize="sm" fontWeight="bold">换装（部件开关）</Text>
+          {parts.length > 0 && <Badge size="sm" colorPalette="gray">{parts.length}</Badge>}
+          <IconButton
+            ml="auto"
+            aria-label="展开部件列表"
+            variant="ghost"
+            size="xs"
+            onClick={() => setPartsOpen((v) => !v)}
+            style={{ transform: partsOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
+          >
+            <FiChevronDown />
+          </IconButton>
+        </Flex>
+        {partsOpen && (
+          parts.length === 0 ? (
+            <Text fontSize="xs" color="gray.400">该模型没有可切换的部件（或未加载完成）</Text>
+          ) : (
+            <Stack gap={1} maxHeight="34vh" overflowY="auto">
+              {parts.map((part) => (
+                <Flex key={part.id} align="center" gap={2} px={1}>
+                  <Text fontSize="xs" flex={1} overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap" color="whiteAlpha.800">
+                    {part.id}
+                  </Text>
+                  <Switch
+                    size="sm"
+                    colorPalette="blue"
+                    checked={part.visible}
+                    onCheckedChange={(details) => {
+                      const visible = details.checked;
+                      setPartVisible(part.index, visible);
+                      setParts((prev) => prev.map((x) => (x.index === part.index ? { ...x, visible } : x)));
+                    }}
+                  />
+                </Flex>
+              ))}
+              <Text fontSize="10px" color="gray.500">部件名来自模型文件;隐藏父部件会连带隐藏其子部件</Text>
+            </Stack>
+          )
         )}
       </Box>
 

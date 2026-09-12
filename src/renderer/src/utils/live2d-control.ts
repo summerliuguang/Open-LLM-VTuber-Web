@@ -211,8 +211,6 @@ export function playMotionPreset(preset: Live2DPreset): boolean {
 
 // ---------- 按模型记忆缩放（切换/刷新后恢复用户捏合调整的大小） ----------
 
-const SCALE_MAP_KEY = 'live2dScaleMap';
-
 export function modelNameFromUrl(url: string | undefined): string {
   const m = url?.match(/live2d-models\/([^/]+)\//);
   return m ? m[1] : '';
@@ -221,32 +219,26 @@ export function modelNameFromUrl(url: string | undefined): string {
 /** 从当前活动模型的 _modelHomeDir 取模型名(不依赖 React 状态,无时序问题) */
 export function getActiveModelName(): string {
   const dir: string = getModel()?._modelHomeDir || '';
-  const m = dir.match(/live2d-models\/([^/]+)\/?$/);
-  return m ? m[1] : modelNameFromUrl(currentModelUrl);
+  // homeDir 形如 .../live2d-models/<名>/ 或 .../live2d-models/<名>/runtime/,取 live2d-models 的下一段
+  const segs = dir.replace(/\/+$/, '').split('/');
+  const idx = segs.lastIndexOf('live2d-models');
+  if (idx >= 0 && segs[idx + 1]) return segs[idx + 1];
+  return modelNameFromUrl(currentModelUrl);
 }
 
-function readScaleMap(): Record<string, number> {
-  try {
-    return JSON.parse(localStorage.getItem(SCALE_MAP_KEY) || '{}');
-  } catch {
-    return {};
-  }
-}
+/**
+ * 缩放基准:每个模型记录"加载完成时的默认大小",捏合只允许在基准的 0.2~3 倍之间;
+ * 加载一律用默认大小,不恢复上次捏合的缩放。
+ */
+const baseScales: Record<string, number> = {};
 
-export function getSavedScale(name: string): number | undefined {
-  const v = readScaleMap()[name];
+const ZOOM_MIN_RATIO = 0.2; // 相对默认尺寸的下限
+const ZOOM_MAX_RATIO = 3.0; // 相对默认尺寸的上限
+const PINCH_DAMPING = 0.45; // 捏合灵敏度阻尼(1=跟手速度,越小越慢)
+
+export function getBaseScale(name: string): number | undefined {
+  const v = baseScales[name];
   return typeof v === 'number' && v > 0 ? v : undefined;
-}
-
-export function saveScaleForModel(name: string, scale: number): void {
-  if (!name || !(scale > 0)) return;
-  try {
-    const map = readScaleMap();
-    map[name] = Number(scale.toFixed(3));
-    localStorage.setItem(SCALE_MAP_KEY, JSON.stringify(map));
-  } catch {
-    /* ignore */
-  }
 }
 
 /** 读取模型矩阵上当前生效的缩放值 */
@@ -273,63 +265,59 @@ function getManager(): any {
   return (window as any).getLive2DManager?.();
 }
 
-/** 以当前显示大小为基准,乘 ratio 调整模型缩放(捏合用) */
+/** 以当前显示大小为基准,乘 ratio 调整模型缩放(捏合用,带阻尼+限幅) */
 export function scaleModelBy(ratio: number): boolean {
   const model = getModel();
   if (!model?._modelMatrix || !(ratio > 0)) return false;
-  const cur = getAppliedScale();
+  const base = getBaseScale(getActiveModelName()) ?? getAppliedScale();
+  const damped = 1 + (ratio - 1) * PINCH_DAMPING; // 阻尼,放慢捏合速度
+  const target = Math.max(
+    base * ZOOM_MIN_RATIO,
+    Math.min(base * ZOOM_MAX_RATIO, getAppliedScale() * damped),
+  );
   if (isFitBranchModel()) {
     const manager = getManager();
     if (!manager?.setUserScale) return false;
     const fit = 2.0 / model.getModel().getCanvasWidth();
-    const us = Math.min(MAX_USER_SCALE, (cur / fit) * ratio);
-    // 双写:先立即改矩阵(否则读数/保存滞后一帧),再设 userScale 让后续帧保持
-    const t = Math.min(MAX_USER_SCALE, fit * us);
-    model._modelMatrix.scale(t, t);
-    manager.setUserScale(0, us);
+    // 双写:先立即改矩阵(否则读数滞后一帧),再设 userScale 让后续帧保持
+    model._modelMatrix.scale(target, target);
+    manager.setUserScale(0, target / fit);
   } else {
-    const target = Math.min(MAX_USER_SCALE, cur * ratio);
     model._modelMatrix.scale(target, target);
   }
   return true;
 }
 
-const MAX_USER_SCALE = 20; // userScale 与矩阵缩放合计的上限(防捏飞)
-
-/**
- * 按缩放记忆恢复当前模型的显示大小(切换模型/刷新后模型异步加载完成时调用)。
- * 幂等:以模型 _modelHomeDir 为标记记录是否已恢复。
- */
-export function restoreUserScaleForCurrentModel(): boolean {
-  const model = getModel();
-  const homeDir: string = model?._modelHomeDir || '';
-  if (!homeDir || !model?._modelMatrix || !model?._modelSetting) return false; // 未加载完
-  if ((window as any).__live2dScaleRestoredFor === homeDir) return true;
-  const name = getActiveModelName();
-  const saved = name ? getSavedScale(name) : undefined;
-  if (saved) {
-    if (isFitBranchModel()) {
-      const fit = 2.0 / model.getModel().getCanvasWidth();
-      getManager()?.setUserScale?.(0, Math.min(MAX_USER_SCALE, saved / fit));
-    } else {
-      model._modelMatrix.scale(
-        Math.min(MAX_USER_SCALE, saved),
-        Math.min(MAX_USER_SCALE, saved),
-      );
-    }
-  }
-  (window as any).__live2dScaleRestoredFor = homeDir;
-  return true;
-}
-
 let scaleWatcherStarted = false;
-/** 常驻 1s 轮询:模型加载完成后恢复缩放记忆(在 live2d.tsx 挂载时启动一次) */
+/** 常驻 1s 轮询:模型加载完成后记录缩放基准(默认大小),供捏合限幅(在 live2d.tsx 挂载时启动一次) */
 export function startScaleRestoreWatcher(): void {
   if (scaleWatcherStarted) return;
   scaleWatcherStarted = true;
   setInterval(() => {
     try {
-      restoreUserScaleForCurrentModel();
+      const model = getModel();
+      if (!model?._modelMatrix || !model?._modelSetting) return;
+      const name = getActiveModelName();
+      if (!name) return;
+      if (baseScales[name] === undefined) {
+        const s = getAppliedScale();
+        if (s > 0) baseScales[name] = s;
+      }
+      // 加载一律用默认大小:本次会话内曾捏合过、又重新加载的模型,恢复基准
+      if ((window as any).__live2dScaleModelHome !== model._modelHomeDir) {
+        (window as any).__live2dScaleModelHome = model._modelHomeDir;
+        const base = baseScales[name];
+        const cur = getAppliedScale();
+        if (base !== undefined && Math.abs(cur - base) > base * 0.01) {
+          if (isFitBranchModel()) {
+            const fit = 2.0 / model.getModel().getCanvasWidth();
+            getManager()?.setUserScale?.(0, base / fit);
+            model._modelMatrix.scale(base, base);
+          } else {
+            model._modelMatrix.scale(base, base);
+          }
+        }
+      }
     } catch {
       /* 模型未就绪时静默 */
     }
@@ -424,4 +412,44 @@ export function restorePresetsForCurrentModel(): boolean {
   });
   (window as any).__live2dRestoredForUrl = currentModelUrl;
   return ok;
+}
+
+// ---------- 换装(部件开关):枚举模型 Parts,按透明度 0/1 切换显隐 ----------
+
+export interface PartInfo {
+  index: number;
+  id: string;
+  visible: boolean;
+}
+
+/** 枚举当前模型的全部部件及可见状态 */
+export function getParts(): PartInfo[] {
+  const core = getModel()?.getModel?.();
+  if (!core?.getPartCount) return [];
+  const count = core.getPartCount();
+  const parts: PartInfo[] = [];
+  for (let i = 0; i < count; i += 1) {
+    try {
+      const idHandle = core.getPartId(i);
+      const id = idHandle?.getString?.().s ?? `part_${i}`;
+      const opacity = core.getPartOpacityByIndex?.(i) ?? 1;
+      parts.push({ index: i, id, visible: opacity > 0.05 });
+    } catch {
+      /* 跳过异常部件 */
+    }
+  }
+  return parts;
+}
+
+/** 切换部件显隐(1=显示,0=隐藏;父部件隐藏会连带隐藏子部件) */
+export function setPartVisible(index: number, visible: boolean): boolean {
+  const core = getModel()?.getModel?.();
+  if (!core?.setPartOpacityByIndex) return false;
+  try {
+    core.setPartOpacityByIndex(index, visible ? 1 : 0);
+    return true;
+  } catch (error) {
+    console.error('[Live2DControl] setPartVisible failed:', error);
+    return false;
+  }
 }
