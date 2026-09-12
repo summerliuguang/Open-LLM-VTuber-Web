@@ -13,6 +13,7 @@ import { useLive2DExpression } from "@/hooks/canvas/use-live2d-expression";
 import { useForceIgnoreMouse } from "@/hooks/utils/use-force-ignore-mouse";
 import { useMode } from "@/context/mode-context";
 import { getManualExpression } from "@/utils/live2d-control";
+import { useLive2DTouch } from "@/hooks/canvas/use-live2d-touch";
 
 interface Live2DProps {
   showSidebar?: boolean;
@@ -40,6 +41,9 @@ export const Live2D = memo(
       modelInfo,
       canvasRef,
     });
+
+    // 手机端触摸手势:单指拖动、双指缩放
+    const { onTouchStart, onTouchMove, onTouchEnd } = useLive2DTouch(modelInfo);
 
     // Setup hooks
     useIpcHandlers();
@@ -107,8 +111,13 @@ export const Live2D = memo(
           overflow: "hidden",
           position: "relative",
           cursor: isDragging ? "grabbing" : "default",
+          touchAction: "none",
         }}
         onPointerDown={handlePointerDown}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onTouchCancel={onTouchEnd}
         onContextMenu={handleContextMenu}
         {...handlers}
       >

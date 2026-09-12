@@ -140,12 +140,9 @@ function AppContent(): JSX.Element {
                 <Background />
               </Box>
               <MobileHeader onMenuOpen={onMobileSettingsOpen} />
-              <Box position="absolute" top="56px" right="12px" zIndex={30}>
-                <WebSocketStatus />
-              </Box>
               <Box
                 position="absolute"
-                top="60px"
+                top="104px"
                 left="50%"
                 transform="translateX(-50%)"
                 zIndex={10}

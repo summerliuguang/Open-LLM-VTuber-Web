@@ -19,6 +19,7 @@ import { settingStyles } from './setting-styles';
 import General from './general';
 import Live2D from './live2d';
 import Live2DControlPanel from '@/components/live2d-control/live2d-control-panel';
+import LlmSettings from './llm';
 import ASR from './asr';
 import TTS from './tts';
 import Agent from './agent';
@@ -77,6 +78,9 @@ function SettingUI({ open, onClose }: SettingUIProps): JSX.Element {
         </Tabs.Content>
         <Tabs.Content value="live2dControl" {...settingStyles.settingUI.tabs.content}>
           <Live2DControlPanel />
+        </Tabs.Content>
+        <Tabs.Content value="llm" {...settingStyles.settingUI.tabs.content}>
+          <LlmSettings />
         </Tabs.Content>
         <Tabs.Content value="asr" {...settingStyles.settingUI.tabs.content}>
           <ASR onSave={handleSaveCallback} onCancel={handleCancelCallback} />
@@ -143,6 +147,13 @@ function SettingUI({ open, onClose }: SettingUIProps): JSX.Element {
                 whiteSpace="nowrap"
               >
                 动作表情
+              </Tabs.Trigger>
+              <Tabs.Trigger
+                value="llm"
+                {...settingStyles.settingUI.tabs.trigger}
+                whiteSpace="nowrap"
+              >
+                语言模型
               </Tabs.Trigger>
               <Tabs.Trigger
                 value="asr"

@@ -1,19 +1,25 @@
 /* 手机端底部输入条,样式对齐 LiteGate 对话测试(playground):
-   圆角卡片内:自适应高度的文本框 + 下排 [麦克风][打断][模型切换chip] ... [圆形发送键];
-   模型 chip 点开上方弹出菜单,列出后端 /live2d-models/info 的全部模型,点击即切换。 */
+   圆角卡片内:自适应高度的文本框 + 下排 [😀表情][麦克风][打断][模型切换chip] ... [圆形发送键];
+   模型 chip 点开上方弹出菜单,列出后端 /live2d-models/info 的全部模型,点击即切换;
+   😀 点开右侧竖排表情/动作快捷按钮列,不遮挡模型主体。 */
 import { useEffect, useRef, useState } from 'react';
 import {
   Box, Flex, IconButton, Textarea, Text,
 } from '@chakra-ui/react';
 import { BsMicFill, BsMicMuteFill } from 'react-icons/bs';
 import { IoHandRightSharp } from 'react-icons/io5';
-import { FiChevronUp, FiSend } from 'react-icons/fi';
+import { FiChevronUp, FiSend, FiSmile } from 'react-icons/fi';
 import { useTextInput } from '@/hooks/footer/use-text-input';
 import { useMicToggle } from '@/hooks/utils/use-mic-toggle';
 import { useInterrupt } from '@/hooks/utils/use-interrupt';
 import { useAiState, AiStateEnum } from '@/context/ai-state-context';
 import { useWebSocket } from '@/context/websocket-context';
 import { useLive2DConfig } from '@/context/live2d-config-context';
+import {
+  getExpressions, getMotionGroups, playMotion, setExpression,
+  modelNameFromUrl, getSavedScale, saveScaleForModel,
+  type MotionGroupInfo,
+} from '@/utils/live2d-control';
 
 interface CharacterInfo {
   name: string;
@@ -21,10 +27,11 @@ interface CharacterInfo {
   model_path: string;
 }
 
+/** 没有缩放记忆的模型给这个默认值(过大的模型如 shizuku 全身可见) */
+const DEFAULT_MODEL_SCALE = 0.6;
+
 function currentModelName(url: string | undefined): string {
-  if (!url) return '选择模型';
-  const m = url.match(/live2d-models\/([^/]+)\//);
-  return m ? m[1] : '选择模型';
+  return modelNameFromUrl(url) || '选择模型';
 }
 
 export function MobileComposer(): JSX.Element {
@@ -39,8 +46,13 @@ export function MobileComposer(): JSX.Element {
   const { modelInfo, setModelInfo } = useLive2DConfig();
 
   const [menuOpen, setMenuOpen] = useState<boolean>(false);
+  const [expressions, setExpressions] = useState<string[]>([]);
+  const [motionGroups, setMotionGroups] = useState<MotionGroupInfo[]>([]);
   const [characters, setCharacters] = useState<CharacterInfo[]>([]);
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const stripTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const [stripOpen, setStripOpen] = useState<boolean>(false);
 
   // 文本框自适应高度(上限约 5 行)
   useEffect(() => {
@@ -49,6 +61,21 @@ export function MobileComposer(): JSX.Element {
     ta.style.height = 'auto';
     ta.style.height = `${Math.min(ta.scrollHeight, 120)}px`;
   }, [inputText]);
+
+  // 快捷表情列打开期间轮询模型状态(模型异步加载)
+  useEffect(() => {
+    if (!stripOpen) {
+      if (stripTimerRef.current) clearInterval(stripTimerRef.current);
+      return;
+    }
+    const refresh = () => {
+      setExpressions(getExpressions());
+      setMotionGroups(getMotionGroups());
+    };
+    refresh();
+    stripTimerRef.current = setInterval(refresh, 1000);
+    return () => { if (stripTimerRef.current) clearInterval(stripTimerRef.current); };
+  }, [stripOpen]);
 
   const openMenu = async () => {
     if (!menuOpen && characters.length === 0) {
@@ -66,8 +93,12 @@ export function MobileComposer(): JSX.Element {
   const switchModel = (c: CharacterInfo) => {
     const url = `${baseUrl}/${c.model_path}`;
     if (modelInfo?.url !== url) {
-      // setModelInfo 内部会把 kScale 乘 2,这里先除回来,避免模型越切越大
-      setModelInfo({ ...modelInfo, url, kScale: (modelInfo?.kScale ?? 1) / 2 });
+      const curName = modelNameFromUrl(modelInfo?.url);
+      // 记住当前模型的缩放;新模型优先用记忆值,否则用默认值
+      saveScaleForModel(curName, modelInfo?.kScale ?? 0);
+      const target = getSavedScale(c.name) ?? DEFAULT_MODEL_SCALE;
+      // setModelInfo 内部会把 kScale 乘 2,这里先除回来
+      setModelInfo({ ...modelInfo, url, kScale: target / 2 });
     }
     setMenuOpen(false);
   };
@@ -91,6 +122,72 @@ export function MobileComposer(): JSX.Element {
       pt={2}
       pb="calc(0.5rem + env(safe-area-inset-bottom))"
     >
+      {/* 右侧竖排表情/动作快捷列 */}
+      {stripOpen && (
+        <Box
+          position="fixed"
+          right={2}
+          top="50%"
+          transform="translateY(-60%)"
+          zIndex={35}
+          display="flex"
+          flexDirection="column"
+          gap={1}
+          bg="rgba(20, 22, 30, 0.72)"
+          backdropFilter="blur(8px)"
+          border="1px solid"
+          borderColor="whiteAlpha.250"
+          borderRadius="14px"
+          p={1}
+          maxHeight="52vh"
+          overflowY="auto"
+        >
+          {expressions.length === 0 && motionGroups.length === 0 && (
+            <Text fontSize="10px" color="whiteAlpha.600" p={1}>模型加载中…</Text>
+          )}
+          {expressions.map((name) => (
+            <Box
+              key={`e-${name}`}
+              as="button"
+              onClick={() => setExpression(name)}
+              fontSize="10px"
+              color="white"
+              bg="whiteAlpha.200"
+              borderRadius="8px"
+              px={1}
+              py="6px"
+              maxWidth="52px"
+              overflow="hidden"
+              textOverflow="ellipsis"
+              whiteSpace="nowrap"
+            >
+              {name}
+            </Box>
+          ))}
+          {motionGroups.map((g) =>
+            g.files.map((_, idx) => (
+              <Box
+                key={`m-${g.name}-${idx}`}
+                as="button"
+                onClick={() => playMotion(g.name, idx)}
+                fontSize="10px"
+                color="white"
+                bg="teal.700"
+                borderRadius="8px"
+                px={1}
+                py="6px"
+                maxWidth="52px"
+                overflow="hidden"
+                textOverflow="ellipsis"
+                whiteSpace="nowrap"
+              >
+                {g.name ? `${g.name}${g.count > 1 ? idx + 1 : ''}` : `动作${idx + 1}`}
+              </Box>
+            )),
+          )}
+        </Box>
+      )}
+
       {menuOpen && (
         <Box
           position="absolute"
@@ -179,6 +276,15 @@ export function MobileComposer(): JSX.Element {
           _focus={{ border: 'none', outline: 'none' }}
         />
         <Flex align="center" gap={1} mt={1}>
+          <IconButton
+            aria-label="表情动作"
+            variant="ghost"
+            size="sm"
+            color={stripOpen ? 'blue.300' : 'whiteAlpha.700'}
+            onClick={() => setStripOpen((v) => !v)}
+          >
+            <FiSmile />
+          </IconButton>
           <IconButton
             aria-label={micOn ? '关闭麦克风' : '打开麦克风'}
             variant="ghost"

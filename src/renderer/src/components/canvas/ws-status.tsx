@@ -17,10 +17,34 @@ const StatusContent: React.FC<StatusContentProps> = ({ textKey }) => {
 const MemoizedStatusContent = memo(StatusContent);
 
 // Main component
-const WebSocketStatus = memo((): JSX.Element => {
+const WebSocketStatus = memo(({ compact = false }: { compact?: boolean }): JSX.Element => {
   const {
     color, textKey, handleClick, isDisconnected,
   } = useWSStatus();
+
+  if (compact) {
+    // 顶栏内嵌的小圆点+短文字版本
+    return (
+      <Box
+        display="flex"
+        alignItems="center"
+        gap="4px"
+        onClick={handleClick}
+        cursor={isDisconnected ? 'pointer' : 'default'}
+        px={1}
+        fontSize="10px"
+        color="white"
+      >
+        <Box
+          width="8px"
+          height="8px"
+          borderRadius="full"
+          backgroundColor={color}
+        />
+        <MemoizedStatusContent textKey={textKey} />
+      </Box>
+    );
+  }
 
   return (
     <Box

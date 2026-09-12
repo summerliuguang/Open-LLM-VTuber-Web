@@ -209,6 +209,46 @@ export function playMotionPreset(preset: Live2DPreset): boolean {
   }
 }
 
+// ---------- 按模型记忆缩放（切换/刷新后恢复用户捏合调整的大小） ----------
+
+const SCALE_MAP_KEY = 'live2dScaleMap';
+
+export function modelNameFromUrl(url: string | undefined): string {
+  const m = url?.match(/live2d-models\/([^/]+)\//);
+  return m ? m[1] : '';
+}
+
+function readScaleMap(): Record<string, number> {
+  try {
+    return JSON.parse(localStorage.getItem(SCALE_MAP_KEY) || '{}');
+  } catch {
+    return {};
+  }
+}
+
+export function getSavedScale(name: string): number | undefined {
+  const v = readScaleMap()[name];
+  return typeof v === 'number' && v > 0 ? v : undefined;
+}
+
+export function saveScaleForModel(name: string, scale: number): void {
+  if (!name || !(scale > 0)) return;
+  try {
+    const map = readScaleMap();
+    map[name] = Number(scale.toFixed(3));
+    localStorage.setItem(SCALE_MAP_KEY, JSON.stringify(map));
+  } catch {
+    /* ignore */
+  }
+}
+
+/** 读取模型矩阵上当前生效的缩放值 */
+export function getAppliedScale(): number {
+  const model = getModel();
+  const s = model?._modelMatrix?._tr?.[0];
+  return typeof s === 'number' && s > 0 ? s : 1;
+}
+
 // ---------- 预设持久化（localStorage，按模型隔离） ----------
 
 const PRESETS_KEY = 'live2dPresets';
