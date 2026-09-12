@@ -211,6 +211,9 @@ export class LAppLive2DManager {
   }
 
   public setViewMatrix(m: CubismMatrix44) {
+    if (m == null || this._viewMatrix == null) {
+      return;
+    }
     for (let i = 0; i < 16; i++) {
       this._viewMatrix.getArray()[i] = m.getArray()[i];
     }

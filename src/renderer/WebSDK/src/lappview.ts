@@ -93,10 +93,14 @@ export class LAppView {
     // this._gear.release();
     // this._gear = null;
 
-    this._back.release();
+    // 初始化未完成(如模型加载中刷新页面)时 _back 可能为 null,不能在这里抛错,
+    // 否则 LAppDelegate.release 的后续释放(管理器/渲染循环停止)被跳过
+    this._back?.release();
     this._back = null;
 
-    gl.deleteProgram(this._programId);
+    if (this._programId != null) {
+      gl.deleteProgram(this._programId);
+    }
     this._programId = null;
   }
 
@@ -104,6 +108,11 @@ export class LAppView {
    * 描画する。
    */
   public render(): void {
+    // release 后矩阵已置空,直接跳过本帧,等渲染循环因实例释放而自行停止
+    if (this._viewMatrix == null || this._deviceToScreen == null) {
+      return;
+    }
+
     gl.useProgram(this._programId);
 
     if (this._back) {
