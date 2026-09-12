@@ -357,6 +357,15 @@ export function VADProvider({ children }: { children: React.ReactNode }) {
     forceUpdate();
   }, []);
 
+  // 页面加载时麦克风一律关闭:VAD 不会自启,若上次会话遗留 micOn=true,归位状态
+  const micSyncOnMountRef = useRef(false);
+  useEffect(() => {
+    if (micSyncOnMountRef.current) return;
+    micSyncOnMountRef.current = true;
+    if (micOn) setMicOn(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Memoized context value
   const contextValue = useMemo(
     () => ({

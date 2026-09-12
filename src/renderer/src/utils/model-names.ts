@@ -119,3 +119,43 @@ export function getPartDisplayName(partId: string): string {
   }
   return partId;
 }
+
+// ---------- 表情/动作显示名 ----------
+
+const EMOTION_ZH: Record<string, string> = {
+  neutral: '平静', joy: '开心', anger: '愤怒', sadness: '伤心',
+  fear: '害怕', disgust: '厌恶', surprise: '惊讶', smirk: '得意',
+};
+
+const EMOTION_ORDER = ['neutral', 'joy', 'anger', 'sadness', 'fear', 'disgust', 'surprise', 'smirk'];
+
+/**
+ * 表情显示名:优先用 emotionMap(情绪→序号)反查情绪中文名,
+ * 否则 exp_N 之类编号名转成"表情N",再不行原样显示。
+ */
+export function getExpressionDisplayName(
+  name: string,
+  index: number,
+  emotionMap?: Record<string, number>,
+): string {
+  if (emotionMap) {
+    for (const emo of EMOTION_ORDER) {
+      if (emotionMap[emo] === index) return EMOTION_ZH[emo] ?? emo;
+    }
+  }
+  const m = /^(?:exp_|expression_|expr_?)(\d+)$/i.exec(name);
+  if (m) return `表情${m[1]}`;
+  return name;
+}
+
+const MOTION_GROUP_ZH: Record<string, string> = {
+  '': '动作', idle: '待机', tap: '点击', tapbody: '触摸',
+  flick: '滑动', flickup: '上滑', default: '动作', talk: '说话',
+};
+
+/** 动作显示名:组名翻译 + 序号;special 文件名特别标注 */
+export function getMotionDisplayName(group: string, file: string, index: number): string {
+  if (/special/i.test(file)) return `特别${index + 1}`;
+  const g = MOTION_GROUP_ZH[group.toLowerCase()] ?? group;
+  return `${g}${index + 1}`;
+}

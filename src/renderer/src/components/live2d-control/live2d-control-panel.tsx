@@ -17,7 +17,9 @@ import {
   getParts, setPartVisible,
   type MotionGroupInfo, type Live2DPreset, type PartInfo,
 } from '@/utils/live2d-control';
-import { getPartDisplayName } from '@/utils/model-names';
+import {
+  getPartDisplayName, getExpressionDisplayName, getMotionDisplayName,
+} from '@/utils/model-names';
 
 const panelBtn = {
   size: 'sm',
@@ -148,7 +150,7 @@ function Live2DControlPanel(): JSX.Element {
           <Text fontSize="xs" color="gray.400">模型暂无表情（或未加载完成）</Text>
         ) : (
           <SimpleGrid columns={3} gap={2}>
-            {expressions.map((name) => (
+            {expressions.map((name, idx) => (
               <Button
                 key={name}
                 {...panelBtn}
@@ -156,7 +158,9 @@ function Live2DControlPanel(): JSX.Element {
                 onClick={() => { setExpression(name); refresh(); }}
                 title={`应用表情 ${name}`}
               >
-                <Text maxW="100%" overflow="hidden" textOverflow="ellipsis">{name}</Text>
+                <Text maxW="100%" overflow="hidden" textOverflow="ellipsis">
+                  {getExpressionDisplayName(name, idx, modelInfo?.emotionMap)}
+                </Text>
               </Button>
             ))}
           </SimpleGrid>
@@ -188,14 +192,16 @@ function Live2DControlPanel(): JSX.Element {
                   )}
                 </Flex>
                 <SimpleGrid columns={group.count > 4 ? 4 : group.count} gap={2}>
-                  {group.files.map((_, idx) => (
+                  {group.files.map((file, idx) => (
                     <Button
                       key={idx}
                       {...panelBtn}
                       onClick={() => { playMotion(group.name, idx); }}
                       title={`播放 ${group.name} #${idx + 1}`}
                     >
-                      {idx + 1}
+                      <Text maxW="100%" overflow="hidden" textOverflow="ellipsis">
+                        {getMotionDisplayName(group.name, file, idx)}
+                      </Text>
                     </Button>
                   ))}
                 </SimpleGrid>

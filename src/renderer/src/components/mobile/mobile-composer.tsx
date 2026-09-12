@@ -25,6 +25,7 @@ import {
 } from '@/utils/live2d-control';
 import {
   getModelDisplayName, getPartDisplayName, sortByChineseName,
+  getExpressionDisplayName, getMotionDisplayName,
 } from '@/utils/model-names';
 
 interface CharacterInfo {
@@ -207,7 +208,7 @@ export function MobileComposer(): JSX.Element {
           {expressions.length === 0 && motionGroups.length === 0 && (
             <Text fontSize="10px" color="whiteAlpha.600" p={1}>模型加载中…</Text>
           )}
-          {expressions.map((name) => (
+          {expressions.map((name, idx) => (
             <Box
               key={`e-${name}`}
               as="button"
@@ -222,12 +223,13 @@ export function MobileComposer(): JSX.Element {
               overflow="hidden"
               textOverflow="ellipsis"
               whiteSpace="nowrap"
+              title={name}
             >
-              {name}
+              {getExpressionDisplayName(name, idx, modelInfo?.emotionMap)}
             </Box>
           ))}
           {motionGroups.map((g) =>
-            g.files.map((_, idx) => (
+            g.files.map((file, idx) => (
               <Box
                 key={`m-${g.name}-${idx}`}
                 as="button"
@@ -242,8 +244,9 @@ export function MobileComposer(): JSX.Element {
                 overflow="hidden"
                 textOverflow="ellipsis"
                 whiteSpace="nowrap"
+                title={file}
               >
-                {g.name ? `${g.name}${g.count > 1 ? idx + 1 : ''}` : `动作${idx + 1}`}
+                {getMotionDisplayName(g.name, file, idx)}
               </Box>
             )),
           )}
@@ -257,17 +260,17 @@ export function MobileComposer(): JSX.Element {
           right={2}
           bottom="100%"
           zIndex={40}
-          bg="gray.800"
+          bg="white"
           border="1px solid"
-          borderColor="whiteAlpha.200"
+          borderColor="gray.200"
           borderRadius="14px"
-          boxShadow="0 8px 28px rgba(0,0,0,0.5)"
-          maxHeight="38vh"
+          boxShadow="0 8px 28px rgba(25,30,55,0.25)"
+          maxHeight="42vh"
           overflowY="auto"
-          p={1}
+          p={1.5}
         >
           {characters.length === 0 && (
-            <Text fontSize="xs" color="whiteAlpha.600" p={2}>模型列表加载中…</Text>
+            <Text fontSize="xs" color="gray.400" p={2}>模型列表加载中…</Text>
           )}
           {characters.map((c) => {
             const active = modelInfo?.url?.includes(`/live2d-models/${c.name}/`);
@@ -278,11 +281,12 @@ export function MobileComposer(): JSX.Element {
                 align="center"
                 gap={2}
                 width="100%"
-                p={2}
+                px={3}
+                py={2}
                 borderRadius="10px"
                 cursor="pointer"
-                bg={active ? 'whiteAlpha.200' : 'transparent'}
-                _hover={{ bg: 'whiteAlpha.100' }}
+                bg={active ? 'blue.50' : 'transparent'}
+                _hover={{ bg: 'blue.50' }}
                 onClick={() => switchModel(c)}
               >
                 {c.avatar && (
@@ -296,10 +300,19 @@ export function MobileComposer(): JSX.Element {
                     objectFit="cover"
                   />
                 )}
-                <Text fontSize="sm" flex={1} textAlign="left" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+                <Text
+                  fontSize="sm"
+                  flex={1}
+                  textAlign="left"
+                  overflow="hidden"
+                  textOverflow="ellipsis"
+                  whiteSpace="nowrap"
+                  color={active ? 'blue.600' : 'gray.800'}
+                  fontWeight={active ? 'bold' : 'normal'}
+                >
                   {getModelDisplayName(c.name)}
                 </Text>
-                {active && <Text fontSize="xs" color="blue.300">当前</Text>}
+                {active && <Text fontSize="xs" color="blue.500">当前</Text>}
               </Flex>
             );
           })}
