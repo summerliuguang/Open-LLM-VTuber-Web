@@ -9,6 +9,8 @@ import {
 import { BsMicFill, BsMicMuteFill } from 'react-icons/bs';
 import { IoHandRightSharp } from 'react-icons/io5';
 import { FiChevronUp, FiSend, FiSmile } from 'react-icons/fi';
+import { RiShirtLine } from 'react-icons/ri';
+import { Switch } from '@/components/ui/switch';
 import { useTextInput } from '@/hooks/footer/use-text-input';
 import { useMicToggle } from '@/hooks/utils/use-mic-toggle';
 import { useInterrupt } from '@/hooks/utils/use-interrupt';
@@ -17,9 +19,13 @@ import { useWebSocket } from '@/context/websocket-context';
 import { useLive2DConfig } from '@/context/live2d-config-context';
 import {
   getExpressions, getMotionGroups, playMotion, setExpression,
+  getParts, setPartVisible,
   modelNameFromUrl, getBaseScale,
-  type MotionGroupInfo,
+  type MotionGroupInfo, type PartInfo,
 } from '@/utils/live2d-control';
+import {
+  getModelDisplayName, getPartDisplayName, sortByChineseName,
+} from '@/utils/model-names';
 
 interface CharacterInfo {
   name: string;
@@ -48,11 +54,13 @@ export function MobileComposer(): JSX.Element {
   const [menuOpen, setMenuOpen] = useState<boolean>(false);
   const [expressions, setExpressions] = useState<string[]>([]);
   const [motionGroups, setMotionGroups] = useState<MotionGroupInfo[]>([]);
+  const [parts, setParts] = useState<PartInfo[]>([]);
   const [characters, setCharacters] = useState<CharacterInfo[]>([]);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const stripTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const [stripOpen, setStripOpen] = useState<boolean>(false);
+  // 右侧快捷列:'expr'=表情动作 'parts'=换装 'none'=收起
+  const [stripMode, setStripMode] = useState<'none' | 'expr' | 'parts'>('none');
 
   // 文本框自适应高度(上限约 5 行)
   useEffect(() => {
@@ -62,27 +70,31 @@ export function MobileComposer(): JSX.Element {
     ta.style.height = `${Math.min(ta.scrollHeight, 120)}px`;
   }, [inputText]);
 
-  // 快捷表情列打开期间轮询模型状态(模型异步加载)
+  // 快捷列打开期间轮询模型状态(模型异步加载)
   useEffect(() => {
-    if (!stripOpen) {
+    if (stripMode === 'none') {
       if (stripTimerRef.current) clearInterval(stripTimerRef.current);
       return;
     }
     const refresh = () => {
       setExpressions(getExpressions());
       setMotionGroups(getMotionGroups());
+      setParts(getParts());
     };
     refresh();
     stripTimerRef.current = setInterval(refresh, 1000);
     return () => { if (stripTimerRef.current) clearInterval(stripTimerRef.current); };
-  }, [stripOpen]);
+  }, [stripMode]);
 
   const openMenu = async () => {
     if (!menuOpen && characters.length === 0) {
       try {
         const res = await fetch(`${baseUrl}/live2d-models/info`);
         const data = await res.json();
-        setCharacters(data.characters || []);
+        setCharacters(sortByChineseName(
+          data.characters || [],
+          (c: CharacterInfo) => getModelDisplayName(c.name),
+        ));
       } catch (error) {
         console.error('[MobileComposer] 获取模型列表失败:', error);
       }
@@ -120,8 +132,60 @@ export function MobileComposer(): JSX.Element {
       pt={2}
       pb="calc(0.5rem + env(safe-area-inset-bottom))"
     >
+      {/* 右侧竖排换装开关列 */}
+      {stripMode === 'parts' && (
+        <Box
+          position="fixed"
+          right={2}
+          top="50%"
+          transform="translateY(-60%)"
+          zIndex={35}
+          display="flex"
+          flexDirection="column"
+          gap={1}
+          bg="rgba(20, 22, 30, 0.72)"
+          backdropFilter="blur(8px)"
+          border="1px solid"
+          borderColor="whiteAlpha.250"
+          borderRadius="14px"
+          p={2}
+          width="164px"
+          maxHeight="56vh"
+          overflowY="auto"
+        >
+          {parts.length === 0 && (
+            <Text fontSize="10px" color="whiteAlpha.600" p={1}>模型加载中…</Text>
+          )}
+          {parts.map((part) => (
+            <Flex key={part.id} align="center" gap={1} width="100%">
+              <Text
+                fontSize="10px"
+                color="white"
+                flex={1}
+                overflow="hidden"
+                textOverflow="ellipsis"
+                whiteSpace="nowrap"
+                title={part.id}
+              >
+                {getPartDisplayName(part.id)}
+              </Text>
+              <Switch
+                size="sm"
+                colorPalette="blue"
+                checked={part.visible}
+                onCheckedChange={(d) => {
+                  const visible = d.checked;
+                  setPartVisible(part.index, visible);
+                  setParts((prev) => prev.map((x) => (x.index === part.index ? { ...x, visible } : x)));
+                }}
+              />
+            </Flex>
+          ))}
+        </Box>
+      )}
+
       {/* 右侧竖排表情/动作快捷列 */}
-      {stripOpen && (
+      {stripMode === 'expr' && (
         <Box
           position="fixed"
           right={2}
@@ -233,7 +297,7 @@ export function MobileComposer(): JSX.Element {
                   />
                 )}
                 <Text fontSize="sm" flex={1} textAlign="left" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
-                  {c.name}
+                  {getModelDisplayName(c.name)}
                 </Text>
                 {active && <Text fontSize="xs" color="blue.300">当前</Text>}
               </Flex>
@@ -278,10 +342,19 @@ export function MobileComposer(): JSX.Element {
             aria-label="表情动作"
             variant="ghost"
             size="sm"
-            color={stripOpen ? 'blue.300' : 'whiteAlpha.700'}
-            onClick={() => setStripOpen((v) => !v)}
+            color={stripMode === 'expr' ? 'blue.300' : 'whiteAlpha.700'}
+            onClick={() => setStripMode((m) => (m === 'expr' ? 'none' : 'expr'))}
           >
             <FiSmile />
+          </IconButton>
+          <IconButton
+            aria-label="换装"
+            variant="ghost"
+            size="sm"
+            color={stripMode === 'parts' ? 'blue.300' : 'whiteAlpha.700'}
+            onClick={() => setStripMode((m) => (m === 'parts' ? 'none' : 'parts'))}
+          >
+            <RiShirtLine />
           </IconButton>
           <IconButton
             aria-label={micOn ? '关闭麦克风' : '打开麦克风'}
@@ -318,7 +391,7 @@ export function MobileComposer(): JSX.Element {
             onClick={openMenu}
           >
             <Text fontSize="xs" color="white" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
-              {modelName}
+              {getModelDisplayName(modelName)}
             </Text>
             <FiChevronUp size={12} />
           </Flex>

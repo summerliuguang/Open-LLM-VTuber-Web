@@ -17,6 +17,7 @@ import {
   getParts, setPartVisible,
   type MotionGroupInfo, type Live2DPreset, type PartInfo,
 } from '@/utils/live2d-control';
+import { getPartDisplayName } from '@/utils/model-names';
 
 const panelBtn = {
   size: 'sm',
@@ -229,8 +230,8 @@ function Live2DControlPanel(): JSX.Element {
             <Stack gap={1} maxHeight="34vh" overflowY="auto">
               {parts.map((part) => (
                 <Flex key={part.id} align="center" gap={2} px={1}>
-                  <Text fontSize="xs" flex={1} overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap" color="whiteAlpha.800">
-                    {part.id}
+                  <Text fontSize="xs" flex={1} overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap" color="whiteAlpha.800" title={part.id}>
+                    {getPartDisplayName(part.id)}
                   </Text>
                   <Switch
                     size="sm"
