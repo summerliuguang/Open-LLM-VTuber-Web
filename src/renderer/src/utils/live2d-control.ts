@@ -218,6 +218,13 @@ export function modelNameFromUrl(url: string | undefined): string {
   return m ? m[1] : '';
 }
 
+/** 从当前活动模型的 _modelHomeDir 取模型名(不依赖 React 状态,无时序问题) */
+export function getActiveModelName(): string {
+  const dir: string = getModel()?._modelHomeDir || '';
+  const m = dir.match(/live2d-models\/([^/]+)\/?$/);
+  return m ? m[1] : modelNameFromUrl(currentModelUrl);
+}
+
 function readScaleMap(): Record<string, number> {
   try {
     return JSON.parse(localStorage.getItem(SCALE_MAP_KEY) || '{}');
@@ -247,6 +254,86 @@ export function getAppliedScale(): number {
   const model = getModel();
   const s = model?._modelMatrix?._tr?.[0];
   return typeof s === 'number' && s > 0 ? s : 1;
+}
+
+/**
+ * 判断当前是否走"竖屏 + 大画布模型"分支:
+ * 该分支每帧 setWidth(2.0*userScale) 重建矩阵,直接改矩阵会被下一帧覆盖,
+ * 必须经 manager.setUserScale 调整;小画布模型则直接改矩阵。
+ */
+function isFitBranchModel(): boolean {
+  const model = getModel();
+  const core = model?.getModel?.();
+  if (!core?.getCanvasWidth) return false;
+  return core.getCanvasWidth() > 1.0 && window.innerWidth < window.innerHeight;
+}
+
+/** 取 Live2DManager 单例(window.getLive2DManager 由 WebSDK main.ts 暴露) */
+function getManager(): any {
+  return (window as any).getLive2DManager?.();
+}
+
+/** 以当前显示大小为基准,乘 ratio 调整模型缩放(捏合用) */
+export function scaleModelBy(ratio: number): boolean {
+  const model = getModel();
+  if (!model?._modelMatrix || !(ratio > 0)) return false;
+  const cur = getAppliedScale();
+  if (isFitBranchModel()) {
+    const manager = getManager();
+    if (!manager?.setUserScale) return false;
+    const fit = 2.0 / model.getModel().getCanvasWidth();
+    const us = Math.min(MAX_USER_SCALE, (cur / fit) * ratio);
+    // 双写:先立即改矩阵(否则读数/保存滞后一帧),再设 userScale 让后续帧保持
+    const t = Math.min(MAX_USER_SCALE, fit * us);
+    model._modelMatrix.scale(t, t);
+    manager.setUserScale(0, us);
+  } else {
+    const target = Math.min(MAX_USER_SCALE, cur * ratio);
+    model._modelMatrix.scale(target, target);
+  }
+  return true;
+}
+
+const MAX_USER_SCALE = 20; // userScale 与矩阵缩放合计的上限(防捏飞)
+
+/**
+ * 按缩放记忆恢复当前模型的显示大小(切换模型/刷新后模型异步加载完成时调用)。
+ * 幂等:以模型 _modelHomeDir 为标记记录是否已恢复。
+ */
+export function restoreUserScaleForCurrentModel(): boolean {
+  const model = getModel();
+  const homeDir: string = model?._modelHomeDir || '';
+  if (!homeDir || !model?._modelMatrix || !model?._modelSetting) return false; // 未加载完
+  if ((window as any).__live2dScaleRestoredFor === homeDir) return true;
+  const name = getActiveModelName();
+  const saved = name ? getSavedScale(name) : undefined;
+  if (saved) {
+    if (isFitBranchModel()) {
+      const fit = 2.0 / model.getModel().getCanvasWidth();
+      getManager()?.setUserScale?.(0, Math.min(MAX_USER_SCALE, saved / fit));
+    } else {
+      model._modelMatrix.scale(
+        Math.min(MAX_USER_SCALE, saved),
+        Math.min(MAX_USER_SCALE, saved),
+      );
+    }
+  }
+  (window as any).__live2dScaleRestoredFor = homeDir;
+  return true;
+}
+
+let scaleWatcherStarted = false;
+/** 常驻 1s 轮询:模型加载完成后恢复缩放记忆(在 live2d.tsx 挂载时启动一次) */
+export function startScaleRestoreWatcher(): void {
+  if (scaleWatcherStarted) return;
+  scaleWatcherStarted = true;
+  setInterval(() => {
+    try {
+      restoreUserScaleForCurrentModel();
+    } catch {
+      /* 模型未就绪时静默 */
+    }
+  }, 1000);
 }
 
 // ---------- 预设持久化（localStorage，按模型隔离） ----------

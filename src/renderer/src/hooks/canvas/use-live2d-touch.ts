@@ -2,19 +2,16 @@
 /* Live2D 触摸手势:单指在模型上拖动移动,双指捏合缩放(0.1~5),缩放结果按模型名持久化。
    桌面端已有的滚轮缩放/鼠标拖动不受影响。 */
 import { useRef, useCallback } from 'react';
-import { ModelInfo } from '@/context/live2d-config-context';
 import { LAppDelegate } from '../../../WebSDK/src/lappdelegate';
 import {
-  modelNameFromUrl, saveScaleForModel, getAppliedScale,
+  saveScaleForModel, getAppliedScale, scaleModelBy, getActiveModelName,
 } from '@/utils/live2d-control';
 
-const MIN_SCALE = 0.15;
-const MAX_SCALE = 5;
 const TAP_MOVE_TOLERANCE = 8; // px,小于该位移视为点按(让点击触发动作的旧逻辑接管)
 
 interface Pt { x: number; y: number }
 
-export const useLive2DTouch = (modelInfo?: ModelInfo) => {
+export const useLive2DTouch = () => {
   const pointers = useRef(new Map<number, Pt>());
   const drag = useRef<{
     active: boolean;
@@ -92,11 +89,8 @@ export const useLive2DTouch = (modelInfo?: ModelInfo) => {
       e.preventDefault();
       const [a, b] = Array.from(pointers.current.values());
       const ratio = dist(a, b) / pinch.current.startDist;
-      const target = Math.min(MAX_SCALE, Math.max(MIN_SCALE, pinch.current.startScale * ratio));
-      const model = (window as any).getLAppAdapter?.()?.getModel?.();
-      if (model?._modelMatrix) {
-        model._modelMatrix.scale(target, target);
-      }
+      // 经统一入口调整:大画布模型走 manager.setUserScale,小画布模型直接改矩阵
+      scaleModelBy(ratio);
       return;
     }
 
@@ -125,16 +119,15 @@ export const useLive2DTouch = (modelInfo?: ModelInfo) => {
     for (const t of Array.from(e.changedTouches)) {
       pointers.current.delete(t.identifier);
     }
-    // 捏合结束:记录该模型的缩放
+    // 捏合结束:记录该模型的缩放(名字取自活动模型,避免依赖可能滞后的 React 状态)
     if (pinch.current && pointers.current.size < 2) {
-      const name = modelNameFromUrl(modelInfo?.url);
-      saveScaleForModel(name, getAppliedScale());
+      saveScaleForModel(getActiveModelName(), getAppliedScale());
       pinch.current = null;
     }
     if (pointers.current.size === 0) {
       drag.current = null;
     }
-  }, [modelInfo?.url]);
+  }, []);
 
   return { onTouchStart, onTouchMove, onTouchEnd };
 };

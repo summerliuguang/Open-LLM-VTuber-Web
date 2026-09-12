@@ -12,7 +12,7 @@ import { useAiState, AiStateEnum } from "@/context/ai-state-context";
 import { useLive2DExpression } from "@/hooks/canvas/use-live2d-expression";
 import { useForceIgnoreMouse } from "@/hooks/utils/use-force-ignore-mouse";
 import { useMode } from "@/context/mode-context";
-import { getManualExpression } from "@/utils/live2d-control";
+import { getManualExpression, startScaleRestoreWatcher } from "@/utils/live2d-control";
 import { useLive2DTouch } from "@/hooks/canvas/use-live2d-touch";
 
 interface Live2DProps {
@@ -43,7 +43,12 @@ export const Live2D = memo(
     });
 
     // 手机端触摸手势:单指拖动、双指缩放
-    const { onTouchStart, onTouchMove, onTouchEnd } = useLive2DTouch(modelInfo);
+    const { onTouchStart, onTouchMove, onTouchEnd } = useLive2DTouch();
+
+    // 模型加载完成后恢复缩放记忆(切换/刷新后)
+    useEffect(() => {
+      startScaleRestoreWatcher();
+    }, []);
 
     // Setup hooks
     useIpcHandlers();

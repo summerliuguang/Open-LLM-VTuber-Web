@@ -151,9 +151,12 @@ export class LAppLive2DManager {
       const model: LAppModel = this.getModel(i);
 
       if (model.getModel()) {
+        // 用户捏合缩放系数(1=默认适配);每帧重建矩阵时都要乘回来,否则被覆盖
+        const userScale: number = this._userScales[i] ?? 1.0;
+
         if (model.getModel().getCanvasWidth() > 1.0 && width < height) {
           // 横に長いモデルを縦長ウィンドウに表示する際モデルの横サイズでscaleを算出する
-          model.getModelMatrix().setWidth(2.0);
+          model.getModelMatrix().setWidth(2.0 * userScale);
           projection.scale(1.0, width / height);
         } else {
           projection.scale(height / width, 1.0);
@@ -168,6 +171,15 @@ export class LAppLive2DManager {
       model.update();
       model.draw(projection); // 参照渡しなのでprojectionは変質する。
     }
+  }
+
+  /**
+   * 设置某个模型槽位的用户缩放系数(由前端触摸捏合调用)。
+   * 仅对"竖屏 + 大画布模型"分支生效(该分支每帧用 setWidth 重建矩阵);
+   * 小画布模型的缩放直接改矩阵,不经过这里。
+   */
+  public setUserScale(index: number, scale: number): void {
+    this._userScales[index] = scale;
   }
 
   /**
@@ -230,6 +242,9 @@ export class LAppLive2DManager {
   }
 
   _viewMatrix: CubismMatrix44; // モデル描画に用いるview行列
+
+  /** 各模型槽位的用户捏合缩放系数,1=默认适配;切换/重载模型后由前端按记忆恢复 */
+  _userScales: number[] = [];
   _models: csmVector<LAppModel>; // モデルインスタンスのコンテナ
   _sceneIndex: number; // 表示するシーンのインデックス値
   // モーション再生終了のコールバック関数
