@@ -31,6 +31,7 @@ import Subtitle from "./components/canvas/subtitle";
 import { ModeProvider, useMode } from "./context/mode-context";
 import { useIsMobile } from "./hooks/use-is-mobile";
 import MobileHeader from "./components/mobile/mobile-header";
+import MobileComposer from "./components/mobile/mobile-composer";
 import SettingUI from "./components/sidebar/setting/setting-ui";
 import { useSidebar } from "./hooks/sidebar/use-sidebar";
 import { AudioMuteProvider } from "./context/audio-mute-context";
@@ -148,19 +149,11 @@ function AppContent(): JSX.Element {
                 left="50%"
                 transform="translateX(-50%)"
                 zIndex={10}
-                width="86%"
+                width="72%"
               >
                 <Subtitle />
               </Box>
-              <Box
-                position="absolute"
-                bottom={0}
-                left={0}
-                right={0}
-                zIndex={20}
-              >
-                <Footer isCollapsed={false} onToggle={() => {}} compact />
-              </Box>
+              <MobileComposer />
               <SettingUI
                 open={mobileSettingsOpen}
                 onClose={onMobileSettingsClose}

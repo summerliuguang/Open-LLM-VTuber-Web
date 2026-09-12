@@ -41,9 +41,16 @@ export const settingStyles = {
       },
       content: {},
       trigger: {
-        color: 'whiteAlpha.600',
+        color: 'whiteAlpha.800',
+        fontSize: 'sm',
+        fontWeight: 'medium',
+        whiteSpace: 'nowrap',
+        flexShrink: 0,
+        px: 3,
+        pb: 2,
         _selected: {
           color: 'white',
+          fontWeight: 'bold',
         },
         _hover: {
           color: 'white',
@@ -57,6 +64,13 @@ export const settingStyles = {
         borderColor: 'whiteAlpha.200',
         mb: 4,
         pl: 0,
+        overflowX: 'auto',
+        overflowY: 'hidden',
+        css: {
+          '&::-webkit-scrollbar': {
+            height: '0px',
+          },
+        },
       },
     },
     footer: {
@@ -71,6 +85,7 @@ export const settingStyles = {
     },
     drawerContent: {
       bg: 'gray.900',
+      color: 'white',
       maxWidth: '440px',
       height: isElectron ? 'calc(100vh - 30px)' : '100vh',
       borderLeft: '1px solid',
@@ -136,7 +151,7 @@ export const settingStyles = {
     },
     fieldLabel: {
       fontSize: '14px',
-      color: 'gray.600',
+      color: 'whiteAlpha.700',
     },
   },
   common: {

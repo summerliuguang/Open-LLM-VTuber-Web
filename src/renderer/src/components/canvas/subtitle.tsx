@@ -12,7 +12,8 @@ interface SubtitleTextProps {
 // Reusable components
 const SubtitleText = memo(({ text }: SubtitleTextProps) => (
   <Text {...canvasStyles.subtitle.text}>
-    {text}
+    {/* 去掉后端附带的情绪/动作标记,如 [joy]、[f01] */}
+    {text.replace(/\s*\[[^\]]*\]\s*/g, ' ').trim()}
   </Text>
 ));
 

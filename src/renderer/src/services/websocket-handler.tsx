@@ -179,7 +179,8 @@ function WebSocketHandler({ children }: { children: React.ReactNode }) {
         break;
       case 'new-history-created':
         setAiState('idle');
-        setSubtitleText(t('notification.newConversation'));
+        // 字幕只显示回复内容,新会话用 toast 提示即可,不再塞一条常驻字幕
+        setSubtitleText('');
         // No need to open mic here
         if (message.history_uid) {
           setCurrentHistoryUid(message.history_uid);

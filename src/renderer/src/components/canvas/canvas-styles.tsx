@@ -38,18 +38,18 @@ export const canvasStyles = {
   },
   subtitle: {
     container: {
-      // 文字泡样式:白底深字圆角气泡,带柔和阴影
-      backgroundColor: 'rgba(255, 255, 255, 0.92)',
-      color: 'gray.900',
-      padding: '12px 20px',
-      borderRadius: '18px',
-      boxShadow: '0 4px 16px rgba(0, 0, 0, 0.35)',
-      minWidth: '60%',
+      // 文字泡样式:深色半透明气泡,白字,无白框感;仅在回复有内容时出现
+      backgroundColor: 'rgba(20, 22, 30, 0.62)',
+      backdropFilter: 'blur(8px)',
+      color: 'white',
+      padding: '8px 16px',
+      borderRadius: '16px',
+      boxShadow: '0 2px 10px rgba(0, 0, 0, 0.3)',
       maxWidth: '95%',
     },
     text: {
-      color: 'gray.900',
-      fontSize: '1.25rem',
+      color: 'white',
+      fontSize: '1.1rem',
       textAlign: 'center',
       lineHeight: '1.4',
       whiteSpace: 'pre-wrap',

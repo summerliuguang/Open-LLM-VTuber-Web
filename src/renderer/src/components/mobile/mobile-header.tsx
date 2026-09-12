@@ -137,12 +137,12 @@ export function MobileHeader({ onMenuOpen }: MobileHeaderProps): JSX.Element {
         <DrawerContent
           bg="gray.900"
           color="white"
-          maxHeight="75vh"
+          maxHeight="42vh"
           borderTopRadius="2xl"
           paddingBottom="env(safe-area-inset-bottom)"
         >
-          <DrawerHeader>
-            <DrawerTitle>表情 / 动作控制</DrawerTitle>
+          <DrawerHeader py={2}>
+            <DrawerTitle fontSize="md">表情 / 动作控制</DrawerTitle>
           </DrawerHeader>
           <DrawerCloseTrigger asChild>
             <IconButton aria-label="关闭" variant="ghost" size="sm" position="absolute" top={2} right={2}>
