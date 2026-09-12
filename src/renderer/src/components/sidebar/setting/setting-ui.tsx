@@ -18,6 +18,7 @@ import { CloseButton } from '@/components/ui/close-button';
 import { settingStyles } from './setting-styles';
 import General from './general';
 import Live2D from './live2d';
+import Live2DControlPanel from '@/components/live2d-control/live2d-control-panel';
 import ASR from './asr';
 import TTS from './tts';
 import Agent from './agent';
@@ -73,6 +74,9 @@ function SettingUI({ open, onClose }: SettingUIProps): JSX.Element {
             onSave={handleSaveCallback}
             onCancel={handleCancelCallback}
           />
+        </Tabs.Content>
+        <Tabs.Content value="live2dControl" {...settingStyles.settingUI.tabs.content}>
+          <Live2DControlPanel />
         </Tabs.Content>
         <Tabs.Content value="asr" {...settingStyles.settingUI.tabs.content}>
           <ASR onSave={handleSaveCallback} onCancel={handleCancelCallback} />
@@ -132,6 +136,13 @@ function SettingUI({ open, onClose }: SettingUIProps): JSX.Element {
                 {...settingStyles.settingUI.tabs.trigger}
               >
                 {t('settings.tabs.live2d')}
+              </Tabs.Trigger>
+              <Tabs.Trigger
+                value="live2dControl"
+                {...settingStyles.settingUI.tabs.trigger}
+                whiteSpace="nowrap"
+              >
+                动作表情
               </Tabs.Trigger>
               <Tabs.Trigger
                 value="asr"

@@ -159,7 +159,7 @@ function AppContent(): JSX.Element {
                 right={0}
                 zIndex={20}
               >
-                <Footer isCollapsed={false} onToggle={() => {}} />
+                <Footer isCollapsed={false} onToggle={() => {}} compact />
               </Box>
               <SettingUI
                 open={mobileSettingsOpen}

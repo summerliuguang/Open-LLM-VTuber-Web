@@ -12,6 +12,7 @@ import { useAiState, AiStateEnum } from "@/context/ai-state-context";
 import { useLive2DExpression } from "@/hooks/canvas/use-live2d-expression";
 import { useForceIgnoreMouse } from "@/hooks/utils/use-force-ignore-mouse";
 import { useMode } from "@/context/mode-context";
+import { getManualExpression } from "@/utils/live2d-control";
 
 interface Live2DProps {
   showSidebar?: boolean;
@@ -46,8 +47,10 @@ export const Live2D = memo(
     useAudioTask();
 
     // Reset expression to default when AI state becomes idle
+    // 用户在控制面板手动选定的表情（__live2dManualExpression）不被自动重置
     useEffect(() => {
       if (aiState === AiStateEnum.IDLE) {
+        if (getManualExpression()) return;
         const lappAdapter = (window as any).getLAppAdapter?.();
         if (lappAdapter) {
           resetExpression(lappAdapter, modelInfo);

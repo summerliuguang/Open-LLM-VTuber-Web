@@ -1,12 +1,17 @@
 /* eslint-disable react/require-default-props */
 /* 手机端顶部标题栏:左侧菜单键(打开设置抽屉),中间模型名(点击重命名),右侧历史/新建 */
 import { useState } from 'react';
-import { Box, Flex, IconButton, Dialog, Input, Button } from '@chakra-ui/react';
-import { FiMenu, FiClock, FiPlus, FiVolume2, FiVolumeX } from 'react-icons/fi';
+import {
+  Box, Flex, IconButton, Dialog, Input, Button,
+  DrawerRoot, DrawerContent, DrawerHeader, DrawerTitle, DrawerBody,
+  DrawerBackdrop, DrawerCloseTrigger,
+} from '@chakra-ui/react';
+import { FiMenu, FiClock, FiPlus, FiVolume2, FiVolumeX, FiSmile } from 'react-icons/fi';
 import { useAudioMute } from '@/context/audio-mute-context';
 import { useConfig } from '@/context/character-config-context';
 import { useSidebar } from '@/hooks/sidebar/use-sidebar';
 import HistoryDrawer from '@/components/sidebar/history-drawer';
+import Live2DControlPanel from '@/components/live2d-control/live2d-control-panel';
 
 interface MobileHeaderProps {
   onMenuOpen: () => void;
@@ -25,6 +30,7 @@ export function MobileHeader({ onMenuOpen }: MobileHeaderProps): JSX.Element {
   const { createNewHistory } = useSidebar();
   const { muted, toggleMuted } = useAudioMute();
   const [editing, setEditing] = useState<boolean>(false);
+  const [controlOpen, setControlOpen] = useState<boolean>(false);
   const [draft, setDraft] = useState<string>('');
   const shownName = savedCharName(confName);
 
@@ -95,6 +101,16 @@ export function MobileHeader({ onMenuOpen }: MobileHeaderProps): JSX.Element {
           {muted ? <FiVolumeX /> : <FiVolume2 />}
         </IconButton>
 
+        <IconButton
+          aria-label="表情动作控制"
+          variant="ghost"
+          size="lg"
+          color="white"
+          onClick={() => setControlOpen(true)}
+        >
+          <FiSmile />
+        </IconButton>
+
         <HistoryDrawer>
           <IconButton aria-label="历史对话" variant="ghost" size="lg">
             <FiClock />
@@ -110,6 +126,34 @@ export function MobileHeader({ onMenuOpen }: MobileHeaderProps): JSX.Element {
           <FiPlus />
         </IconButton>
       </Flex>
+
+      {/* 动作/表情控制抽屉 */}
+      <DrawerRoot
+        open={controlOpen}
+        onOpenChange={(e) => setControlOpen(e.open)}
+        placement="bottom"
+      >
+        <DrawerBackdrop />
+        <DrawerContent
+          bg="gray.900"
+          color="white"
+          maxHeight="75vh"
+          borderTopRadius="2xl"
+          paddingBottom="env(safe-area-inset-bottom)"
+        >
+          <DrawerHeader>
+            <DrawerTitle>表情 / 动作控制</DrawerTitle>
+          </DrawerHeader>
+          <DrawerCloseTrigger asChild>
+            <IconButton aria-label="关闭" variant="ghost" size="sm" position="absolute" top={2} right={2}>
+              ✕
+            </IconButton>
+          </DrawerCloseTrigger>
+          <DrawerBody overflowY="auto">
+            <Live2DControlPanel />
+          </DrawerBody>
+        </DrawerContent>
+      </DrawerRoot>
 
       <Dialog.Root
         open={editing}

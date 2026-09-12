@@ -16,6 +16,8 @@ import { useFooter } from '@/hooks/footer/use-footer';
 interface FooterProps {
   isCollapsed?: boolean
   onToggle?: () => void
+  /** 手机端：隐藏无功能的附件/折叠按钮，并适配安全区底部间距 */
+  compact?: boolean
 }
 
 interface ToggleButtonProps {
@@ -35,6 +37,7 @@ interface MessageInputProps {
   onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void
   onCompositionStart: () => void
   onCompositionEnd: () => void
+  showAttach?: boolean
 }
 
 // Reusable components
@@ -81,19 +84,22 @@ const MessageInput = memo(({
   onKeyDown,
   onCompositionStart,
   onCompositionEnd,
+  showAttach = true,
 }: MessageInputProps) => {
   const { t } = useTranslation();
 
   return (
     <InputGroup flex={1}>
       <Box position="relative" width="100%">
-        <IconButton
-          aria-label="Attach file"
-          variant="ghost"
-          {...footerStyles.footer.attachButton}
-        >
-          <BsPaperclip size="24" />
-        </IconButton>
+        {showAttach && (
+          <IconButton
+            aria-label="Attach file"
+            variant="ghost"
+            {...footerStyles.footer.attachButton}
+          >
+            <BsPaperclip size="24" />
+          </IconButton>
+        )}
         <Textarea
           value={value}
           onChange={onChange}
@@ -111,7 +117,7 @@ const MessageInput = memo(({
 MessageInput.displayName = 'MessageInput';
 
 // Main component
-function Footer({ isCollapsed = false, onToggle }: FooterProps): JSX.Element {
+function Footer({ isCollapsed = false, onToggle, compact = false }: FooterProps): JSX.Element {
   const {
     inputValue,
     handleInputChange,
@@ -124,8 +130,11 @@ function Footer({ isCollapsed = false, onToggle }: FooterProps): JSX.Element {
   } = useFooter();
 
   return (
-    <Box {...footerStyles.footer.container(isCollapsed)}>
-      <ToggleButton isCollapsed={isCollapsed} onToggle={onToggle} />
+    <Box
+      {...footerStyles.footer.container(isCollapsed)}
+      {...(compact && { paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' })}
+    >
+      {!compact && <ToggleButton isCollapsed={isCollapsed} onToggle={onToggle} />}
 
       <Box pt="0" px="4">
         <HStack width="100%" gap={4}>
@@ -146,6 +155,7 @@ function Footer({ isCollapsed = false, onToggle }: FooterProps): JSX.Element {
             onKeyDown={handleKeyPress}
             onCompositionStart={handleCompositionStart}
             onCompositionEnd={handleCompositionEnd}
+            showAttach={!compact}
           />
         </HStack>
       </Box>

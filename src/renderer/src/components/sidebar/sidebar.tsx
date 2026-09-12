@@ -102,7 +102,7 @@ MuteButton.displayName = 'MuteButton';
 const HeaderButtons = memo(({ onSettingsOpen, onNewHistory, setMode, currentMode, isElectron }: HeaderButtonsProps) => (
   <Box display="flex" gap={1}>
     <MuteButton />
-    <Button onClick={onSettingsOpen}>
+    <Button onClick={onSettingsOpen} aria-label="打开设置" title="设置">
       <FiSettings />
     </Button>
 
